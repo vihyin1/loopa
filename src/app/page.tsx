@@ -1,69 +1,62 @@
-import Image from "next/image";
+import { supabase } from '@/lib/supabase';
+import SubmitForm from './SubmitForm';
+import EntriesList from './EntriesList';
 
-export default function Home() {
+function getTodayChallenge<T>(arr: T[]): T | null {
+  if (!arr || arr.length === 0) return null;
+  const now = new Date();
+  const start = new Date(now.getUTCFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
+  return arr[dayOfYear % arr.length];
+}
+
+export default async function Home() {
+  const { data: challenges, error } = await supabase
+    .from('challenges')
+    .select('*')
+    .order('id', { ascending: true });
+
+  const challenge = challenges ? getTodayChallenge(challenges) : null;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="min-h-screen bg-gradient-to-br from-violet-600 via-fuchsia-500 to-pink-500 text-white">
+      <header className="w-full px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between max-w-3xl mx-auto">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl sm:text-3xl">⚡</span>
+          <span className="text-xl sm:text-2xl font-black tracking-tight">LOOPA</span>
+        </div>
+        <span className="text-xs sm:text-sm opacity-80 hidden sm:block">
+          Social. Fun. Daily.
+        </span>
+      </header>
+
+      <section className="px-5 sm:px-6 pt-4 sm:pt-6 pb-2 max-w-2xl mx-auto text-center">
+        <p className="inline-block bg-white/20 backdrop-blur px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold tracking-widest mb-4">
+          🔥 TODAY&apos;S CHALLENGE
+        </p>
+        {error && (
+          <p className="text-red-200 mb-4 text-sm">Error: {error.message}</p>
+        )}
+        {challenge ? (
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight max-w-lg mx-auto fade-in">
+            {challenge.text}
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        ) : (
+          <p className="opacity-80">No challenge yet...</p>
+        )}
+      </section>
+
+      {challenge && (
+        <>
+          <section className="px-5 sm:px-6 mt-6 sm:mt-8">
+            <SubmitForm challengeId={challenge.id} type={(challenge.type as 'text' | 'photo' | 'poll') || 'text'} />
+          </section>
+
+          <section className="px-5 sm:px-6 mt-8 sm:mt-10 pb-16 sm:pb-20">
+            <EntriesList challengeId={challenge.id} />
+          </section>
+        </>
+      )}
+    </main>
   );
 }
