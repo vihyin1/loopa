@@ -1,8 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { supabase } from '@/lib/supabase';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import SubmitForm from './SubmitForm';
 import EntriesList from './EntriesList';
+import SignIn from './SignIn';
 
 function getTodayChallenge<T>(arr: T[]): T | null {
   if (!arr || arr.length === 0) return null;
@@ -12,12 +15,35 @@ function getTodayChallenge<T>(arr: T[]): T | null {
   return arr[dayOfYear % arr.length];
 }
 
-export default async function Home() {
-  const { data: challenges, error } = await supabase
-    .from('challenges')
-    .select('*')
-    .order('id', { ascending: true });
+async function getUser() {
+  const cookieStore = await cookies();
+  const supabaseAuth = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
+      },
+    }
+  );
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  return user;
+}
 
+export default async function Home() {
+  const [challengesResult, user] = await Promise.all([
+    supabase
+      .from('challenges')
+      .select('*')
+      .order('id', { ascending: true }),
+    getUser(),
+  ]);
+
+  const challenges = challengesResult.data;
+  const error = challengesResult.error;
   const challenge = challenges ? getTodayChallenge(challenges) : null;
 
   return (
@@ -28,7 +54,7 @@ export default async function Home() {
           <span className="text-xl sm:text-2xl font-black tracking-tight">LOOPA</span>
         </div>
         <span className="text-xs sm:text-sm opacity-80 hidden sm:block">
-          Social. Fun. Daily.
+          {user ? user.email : 'Social. Fun. Daily.'}
         </span>
       </header>
 
@@ -51,7 +77,16 @@ export default async function Home() {
       {challenge && (
         <>
           <section className="px-5 sm:px-6 mt-6 sm:mt-8">
-            <SubmitForm challengeId={challenge.id} type={(challenge.type as 'text' | 'photo' | 'poll') || 'text'} />
+            {user ? (
+              <SubmitForm
+                challengeId={challenge.id}
+                type={(challenge.type as 'text' | 'photo' | 'poll') || 'text'}
+                userName={user.email?.split('@')[0] || 'Player'}
+                userId={user.id}
+              />
+            ) : (
+              <SignIn />
+            )}
           </section>
 
           <section className="px-5 sm:px-6 mt-8 sm:mt-10 pb-16 sm:pb-20">
