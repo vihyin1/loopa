@@ -94,7 +94,8 @@ export default function SubmitForm({
       setContent('');
       setFile(null);
       setPreview(null);
-      router.refresh();
+     router.refresh();
+setTimeout(() => router.refresh(), 300);
       setTimeout(() => setMessage(''), 2000);
     }
   }
